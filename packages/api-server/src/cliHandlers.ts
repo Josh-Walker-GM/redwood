@@ -19,11 +19,13 @@ const sendProcessReady = () => {
 }
 
 export const commonOptions = {
+  host: { default: getConfig().web?.host, type: 'string', alias: 'h' },
   port: { default: getConfig().web?.port || 8910, type: 'number', alias: 'p' },
   socket: { type: 'string' },
 } as const
 
 export const apiCliOptions = {
+  host: { default: getConfig().api?.host, type: 'string', alias: 'h' },
   port: { default: getConfig().api?.port || 8911, type: 'number', alias: 'p' },
   socket: { type: 'string' },
   apiRootPath: {
@@ -36,6 +38,7 @@ export const apiCliOptions = {
 } as const
 
 export const webCliOptions = {
+  host: { default: getConfig().web?.host, type: 'string', alias: 'h' },
   port: { default: getConfig().web?.port || 8910, type: 'number', alias: 'p' },
   socket: { type: 'string' },
   apiHost: {
@@ -46,7 +49,7 @@ export const webCliOptions = {
 } as const
 
 export const apiServerHandler = async (options: ApiServerArgs) => {
-  const { port, socket, apiRootPath } = options
+  const { host, port, socket, apiRootPath } = options
   const tsApiServer = Date.now()
   process.stdout.write(c.dim(c.italic('Starting API Server...\n')))
 
@@ -56,6 +59,7 @@ export const apiServerHandler = async (options: ApiServerArgs) => {
   fastify = await withFunctions(fastify, options)
 
   const http = startFastifyServer({
+    host,
     port,
     socket,
     fastify,
@@ -76,7 +80,7 @@ export const apiServerHandler = async (options: ApiServerArgs) => {
 }
 
 export const bothServerHandler = async (options: BothServerArgs) => {
-  const { port, socket } = options
+  const { host, port, socket } = options
   const tsServer = Date.now()
   process.stdout.write(c.dim(c.italic('Starting API and Web Servers...\n')))
   const apiRootPath = coerceRootPath(getConfig().web.apiUrl)
@@ -88,6 +92,7 @@ export const bothServerHandler = async (options: BothServerArgs) => {
   fastify = await withFunctions(fastify, { ...options, apiRootPath })
 
   startFastifyServer({
+    host,
     port,
     socket,
     fastify,
@@ -108,7 +113,7 @@ export const bothServerHandler = async (options: BothServerArgs) => {
 }
 
 export const webServerHandler = async (options: WebServerArgs) => {
-  const { port, socket, apiHost } = options
+  const { host, port, socket, apiHost } = options
   const tsServer = Date.now()
   process.stdout.write(c.dim(c.italic('Starting Web Server...\n')))
   const apiUrl = getConfig().web.apiUrl
@@ -131,6 +136,7 @@ export const webServerHandler = async (options: WebServerArgs) => {
   }
 
   startFastifyServer({
+    host,
     port: port,
     socket,
     fastify,
