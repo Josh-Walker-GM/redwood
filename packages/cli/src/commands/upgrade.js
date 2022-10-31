@@ -93,6 +93,7 @@ const validateTag = (tag) => {
 export const handler = async ({ dryRun, tag, verbose, dedupe }) => {
   const initialContext = {
     upgrading: false, // This flag will allow us to only show the upgrade listr tasks if an upgrade is actually available and underway
+    skippedSteps: [], // Container for any modifications/checks that were not performed
   }
 
   const tasks = new Listr(
@@ -127,18 +128,18 @@ export const handler = async ({ dryRun, tag, verbose, dedupe }) => {
         enabled: (ctx) => ctx.upgrading,
         skip: () => dryRun,
       },
-      {
-        title: 'Refreshing the Prisma client',
-        task: (_ctx, task) => refreshPrismaClient(task, { verbose }),
-        enabled: (ctx) => ctx.upgrading,
-        skip: () => dryRun,
-      },
-      {
-        title: 'De-duplicating dependencies',
-        task: (_ctx, task) => dedupeDeps(task, { verbose }),
-        enabled: (ctx) => ctx.upgrading,
-        skip: () => dryRun || !dedupe,
-      },
+      // {
+      //   title: 'Refreshing the Prisma client',
+      //   task: (_ctx, task) => refreshPrismaClient(task, { verbose }),
+      //   enabled: (ctx) => ctx.upgrading,
+      //   skip: () => dryRun,
+      // },
+      // {
+      //   title: 'De-duplicating dependencies',
+      //   task: (_ctx, task) => dedupeDeps(task, { verbose }),
+      //   enabled: (ctx) => ctx.upgrading,
+      //   skip: () => dryRun || !dedupe,
+      // },
     ],
     {
       ctx: initialContext,
@@ -502,18 +503,103 @@ function updatePackageJsonVersion(pkgPath, version, { dryRun, verbose }) {
 }
 
 async function handleCodeModifications(ctx, task) {
+  // TODO: Inline this sorting...
   // Sort the relevant upgrades so we can perform them in the correct lowest to highest version order
-  let sortedUpgrades = [...ctx.relevantUpgrades]
-  sortedUpgrades.sort((a, b) =>
-    semver.gt(a.toVersion, b.toVersion)
-      ? 1
-      : semver.lt(b.toVersion, a.toVersion)
-      ? -1
-      : 0
-  )
+  let sortedUpgrades = [...ctx.relevantUpgrades].sort((a, b) => {
+    if (semver.lt(a.toVersion, b.toVersion)) {
+      return -1
+    } else {
+      if (semver.gt(a.toVersion, b.toVersion)) {
+        return 1
+      }
+    }
+    return 0
+  })
 
-  console.log(sortedUpgrades, '\n\n\n\n\n\n')
-  process.exit()
+  return task.newListr((parent) => [
+    {
+      title: '',
+      task: async (ctx, task) => {
+        let totalStep = 0
+        let totalSteps = sortedUpgrades.reduce(
+          (partialSum, upgrade) =>
+            partialSum +
+            (upgrade.modifications.automatic.length +
+              upgrade.modifications.manual.length),
+          0
+        ) // TODO: Compute this
+        for (const upgrade of sortedUpgrades) {
+          let theseStep = 1
+          let theseSteps =
+            upgrade.modifications.automatic.length +
+            upgrade.modifications.manual.length
+          parent.title = `Handling necessary code modifications (${(
+            (totalStep / totalSteps) *
+            100
+          ).toFixed(2)}% Complete)`
+          for (const automaticChange of upgrade.modifications.automatic) {
+            task.title = `Change ${theseStep} of ${theseSteps} for ${upgrade.fromVersion} -> ${upgrade.toVersion}`
+            const response = await task.prompt({
+              type: 'confirm',
+              name: `automatic-change-${automaticChange.id}`,
+              message: `Automatic: ${automaticChange.title}\n  Script: ${automaticChange.url}\n\n  Description\n  ${automaticChange.description}\n\n  Proceed?`,
+              initial: true,
+            })
+            if (response) {
+              task.output = 'Checking if change is needed...'
+              await new Promise((r) => setTimeout(r, 1000)) // TODO: remove this
+              // TODO: Fetch script
+              // TODO: Run the check function
+              const shouldRun = Math.random() < 0.5 // (TODO: Replace with result of check function)
+              if (shouldRun) {
+                // TODO: Run the modification script
+                task.output = 'Changes needed, performing them now...'
+                await new Promise((r) => setTimeout(r, 1000)) // TODO: remove this
+
+                const errorHappened = Math.random() < 0.5 // (TODO: Determine from catching the modification script)
+                if (errorHappened) {
+                  await task.prompt({
+                    type: 'invisible',
+                    name: `error-change-${automaticChange.id}`,
+                    message: `Automatic: ${automaticChange.title}\n  Script: ${automaticChange.url}\n\n  Error\n  There was an error whilst trying to apply this change [ERROR-MESSAGE]. See [DOCS-LINK] for more information.\n\n  Press enter to proceed...`,
+                  })
+                } else {
+                  task.output = 'Changes made successfully.'
+                  await new Promise((r) => setTimeout(r, 1000)) // TODO: remove this
+                }
+              } else {
+                task.output =
+                  'This particular change is not nessecary for your redwood project.'
+                await new Promise((r) => setTimeout(r, 1000)) // TODO: Consider if this is good or not - my thinking was to allow the user to briefly see the message before moving on without needing any more prompts.
+              }
+            } else {
+              ctx.skippedSteps.push(automaticChange.id)
+            }
+            totalStep += 1
+            theseStep += 1
+          }
+          for (const manualChange of upgrade.modifications.manual) {
+            task.title = `Change ${theseStep} of ${theseSteps} for ${upgrade.fromVersion} -> ${upgrade.toVersion}`
+            await task.prompt({
+              type: 'invisible',
+              name: `manual-change-${manualChange.id}`,
+              message: `Manual: ${manualChange.title}\n  Docs: ${manualChange.url}\n\n  Description\n  ${manualChange.description}\n\n  Press enter to proceed...`,
+            })
+            totalStep += 1
+            theseStep += 1
+          }
+        }
+        parent.title = `Handling necessary code modifications (100.00% Complete)`
+
+        if (ctx.skippedSteps.length > 0) {
+          task.title =
+            'The following automatic checks/modifications were skipped:\n[LIST-OF-SKIPPED-CHECKS/MODIFICATIONS]' // TODO: Show a notice that some were skipped
+        } else {
+          task.title = 'All automatic checks/modifications were run.'
+        }
+      },
+    },
+  ])
 }
 
 async function yarnInstall({ verbose }) {
