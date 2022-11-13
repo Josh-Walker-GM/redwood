@@ -6,6 +6,14 @@ export const getJsxAttributeValue = (expression: any): any => {
     return true
   }
 
+  if (expression.type === 'BooleanLiteral') {
+    return Boolean(expression.value)
+  }
+
+  if (expression.type === 'NumericLiteral') {
+    return Number(expression.value)
+  }
+
   if (expression.type === 'StringLiteral') {
     return expression.value
   }
