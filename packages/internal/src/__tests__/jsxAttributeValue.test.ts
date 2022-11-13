@@ -2,11 +2,12 @@
 
 import {
   ArrayExpression,
-  Expression,
+  BinaryExpression,
+  BooleanLiteral,
   Identifier,
   JSXAttribute,
   JSXExpressionContainer,
-  ObjectExpression,
+  NumericLiteral,
   StringLiteral,
   stringLiteral,
   TemplateLiteral,
@@ -18,6 +19,34 @@ import { getJsxAttributeValue } from '../jsxAttributeValue'
 test('handles null', () => {
   const attributeValue: JSXAttribute['value'] = null
   expect(getJsxAttributeValue(attributeValue)).toBe(true)
+})
+
+test('handles BooleanLiteral', () => {
+  let attributeValue: BooleanLiteral = {
+    type: 'BooleanLiteral',
+    value: true,
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(true)
+
+  attributeValue = {
+    type: 'BooleanLiteral',
+    value: false,
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(false)
+})
+
+test('handles NumericLiteral', () => {
+  let attributeValue: NumericLiteral = {
+    type: 'NumericLiteral',
+    value: 0,
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(0)
+
+  attributeValue = {
+    type: 'NumericLiteral',
+    value: -3.14159265,
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(-3.14159265)
 })
 
 test('handles StringLiteral', () => {
@@ -96,41 +125,214 @@ test('handles Identifier', () => {
 })
 
 test('handles BinaryExpression', () => {
-  const attributeValue: any = null
+  let attributeValue: BinaryExpression = {
+    type: 'BinaryExpression',
+    operator: '+',
+    left: { type: 'StringLiteral', value: 'ab' },
+    right: { type: 'StringLiteral', value: 'cd' },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe('abcd')
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '+',
+    left: { type: 'NumericLiteral', value: 1 },
+    right: { type: 'NumericLiteral', value: -2 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(-1)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '-',
+    left: { type: 'NumericLiteral', value: 1 },
+    right: { type: 'NumericLiteral', value: -2 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(3)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '*',
+    left: { type: 'NumericLiteral', value: 1 },
+    right: { type: 'NumericLiteral', value: -2 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(-2)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '**',
+    left: { type: 'NumericLiteral', value: 2 },
+    right: { type: 'NumericLiteral', value: 10 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(1024)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '/',
+    left: { type: 'NumericLiteral', value: 2 },
+    right: { type: 'NumericLiteral', value: 4 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(1 / 2)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '%',
+    left: { type: 'NumericLiteral', value: 10 },
+    right: { type: 'NumericLiteral', value: 3 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(1)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '==',
+    left: { type: 'StringLiteral', value: '1' },
+    right: { type: 'NumericLiteral', value: 1 },
+  }
   expect(getJsxAttributeValue(attributeValue)).toBe(true)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '==',
+    left: { type: 'StringLiteral', value: '1' },
+    right: { type: 'NumericLiteral', value: 0 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(false)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '===',
+    left: { type: 'StringLiteral', value: 'ab' },
+    right: { type: 'StringLiteral', value: 'ab' },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(true)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '===',
+    left: { type: 'StringLiteral', value: 'ab' },
+    right: { type: 'StringLiteral', value: 'cd' },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(false)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '!=',
+    left: { type: 'StringLiteral', value: '1' },
+    right: { type: 'NumericLiteral', value: 1 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(false)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '!=',
+    left: { type: 'StringLiteral', value: '1' },
+    right: { type: 'NumericLiteral', value: 0 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(true)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '!==',
+    left: { type: 'StringLiteral', value: 'ab' },
+    right: { type: 'StringLiteral', value: 'ab' },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(false)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '!==',
+    left: { type: 'StringLiteral', value: 'ab' },
+    right: { type: 'StringLiteral', value: 'cd' },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(true)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '<',
+    left: { type: 'NumericLiteral', value: 1 },
+    right: { type: 'NumericLiteral', value: 2 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(true)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '<=',
+    left: { type: 'NumericLiteral', value: 1 },
+    right: { type: 'NumericLiteral', value: 1 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(true)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '<=',
+    left: { type: 'NumericLiteral', value: 1 },
+    right: { type: 'NumericLiteral', value: 2 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(true)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '>',
+    left: { type: 'NumericLiteral', value: 1 },
+    right: { type: 'NumericLiteral', value: 2 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(false)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '>=',
+    left: { type: 'NumericLiteral', value: 1 },
+    right: { type: 'NumericLiteral', value: 1 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(true)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '>=',
+    left: { type: 'NumericLiteral', value: 2 },
+    right: { type: 'NumericLiteral', value: 1 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(true)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '<<',
+    left: { type: 'NumericLiteral', value: 4 },
+    right: { type: 'NumericLiteral', value: 1 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(8)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '>>',
+    left: { type: 'NumericLiteral', value: 4 },
+    right: { type: 'NumericLiteral', value: 1 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(2)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '>>>',
+    left: { type: 'NumericLiteral', value: 5 },
+    right: { type: 'NumericLiteral', value: 2 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(1)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '>>>',
+    left: { type: 'NumericLiteral', value: -5 },
+    right: { type: 'NumericLiteral', value: 2 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(1073741822)
 
   // TODO: Add more complex test
 })
 
 test('handles UnaryExpression', () => {
-  // TODO: Question why BooleanLiteral is not supported
-  // let attributeValue: UnaryExpression = {
-  //   type: 'UnaryExpression',
-  //   argument: { type: 'BooleanLiteral', value: true },
-  //   operator: '+',
-  //   prefix: true,
-  // }
-  // expect(getJsxAttributeValue(attributeValue)).toBe(1)
-
-  // attributeValue = {
-  //   type: 'UnaryExpression',
-  //   argument: { type: 'BooleanLiteral', value: true },
-  //   operator: '-',
-  //   prefix: true,
-  // }
-  // expect(getJsxAttributeValue(attributeValue)).toBe(-1)
-
-  // attributeValue = {
-  //   type: 'UnaryExpression',
-  //   argument: { type: 'BooleanLiteral', value: false },
-  //   operator: '~',
-  //   prefix: true,
-  // }
-  // expect(getJsxAttributeValue(attributeValue)).toBe(-1)
-
+  // TODO: Question: Why os BooleanLiteral originally not supported?
   let attributeValue: UnaryExpression = {
     type: 'UnaryExpression',
-    argument: { type: 'StringLiteral', value: '1' },
+    argument: { type: 'BooleanLiteral', value: true },
     operator: '+',
     prefix: true,
   }
@@ -138,15 +340,7 @@ test('handles UnaryExpression', () => {
 
   attributeValue = {
     type: 'UnaryExpression',
-    argument: { type: 'StringLiteral', value: 'test' },
-    operator: '+',
-    prefix: true,
-  }
-  expect(getJsxAttributeValue(attributeValue)).toBe(NaN)
-
-  attributeValue = {
-    type: 'UnaryExpression',
-    argument: { type: 'StringLiteral', value: '1' },
+    argument: { type: 'BooleanLiteral', value: true },
     operator: '-',
     prefix: true,
   }
@@ -154,27 +348,60 @@ test('handles UnaryExpression', () => {
 
   attributeValue = {
     type: 'UnaryExpression',
-    argument: { type: 'StringLiteral', value: 'test' },
-    operator: '-',
-    prefix: true,
-  }
-  expect(getJsxAttributeValue(attributeValue)).toBe(NaN)
-
-  attributeValue = {
-    type: 'UnaryExpression',
-    argument: { type: 'StringLiteral', value: '' },
+    argument: { type: 'BooleanLiteral', value: false },
     operator: '~',
     prefix: true,
   }
   expect(getJsxAttributeValue(attributeValue)).toBe(-1)
 
-  attributeValue = {
-    type: 'UnaryExpression',
-    argument: { type: 'StringLiteral', value: '-1' },
-    operator: '~',
-    prefix: true,
-  }
-  expect(getJsxAttributeValue(attributeValue)).toBe(0)
+  // TODO: Use these if the new BooleanLiteral and NumericLiteral are reverted
+  // let attributeValue: UnaryExpression = {
+  //   type: 'UnaryExpression',
+  //   argument: { type: 'StringLiteral', value: '1' },
+  //   operator: '+',
+  //   prefix: true,
+  // }
+  // expect(getJsxAttributeValue(attributeValue)).toBe(1)
+
+  // attributeValue = {
+  //   type: 'UnaryExpression',
+  //   argument: { type: 'StringLiteral', value: 'test' },
+  //   operator: '+',
+  //   prefix: true,
+  // }
+  // expect(getJsxAttributeValue(attributeValue)).toBe(NaN)
+
+  // attributeValue = {
+  //   type: 'UnaryExpression',
+  //   argument: { type: 'StringLiteral', value: '1' },
+  //   operator: '-',
+  //   prefix: true,
+  // }
+  // expect(getJsxAttributeValue(attributeValue)).toBe(-1)
+
+  // attributeValue = {
+  //   type: 'UnaryExpression',
+  //   argument: { type: 'StringLiteral', value: 'test' },
+  //   operator: '-',
+  //   prefix: true,
+  // }
+  // expect(getJsxAttributeValue(attributeValue)).toBe(NaN)
+
+  // attributeValue = {
+  //   type: 'UnaryExpression',
+  //   argument: { type: 'StringLiteral', value: '' },
+  //   operator: '~',
+  //   prefix: true,
+  // }
+  // expect(getJsxAttributeValue(attributeValue)).toBe(-1)
+
+  // attributeValue = {
+  //   type: 'UnaryExpression',
+  //   argument: { type: 'StringLiteral', value: '-1' },
+  //   operator: '~',
+  //   prefix: true,
+  // }
+  // expect(getJsxAttributeValue(attributeValue)).toBe(0)
 
   attributeValue = {
     type: 'UnaryExpression',
