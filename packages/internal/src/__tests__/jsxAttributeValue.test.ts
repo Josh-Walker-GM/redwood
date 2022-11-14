@@ -8,9 +8,10 @@ import {
   JSXAttribute,
   JSXExpressionContainer,
   NumericLiteral,
+  ObjectExpression,
   StringLiteral,
   stringLiteral,
-  TemplateLiteral,
+  // TemplateLiteral,
   UnaryExpression,
 } from '@babel/types'
 
@@ -93,24 +94,41 @@ test('handles ArrayExpression', () => {
   ])
 })
 
-test('handles TemplateLiteral', () => {
-  const attributeValue: TemplateLiteral = {
-    type: 'TemplateLiteral',
-    expressions: [],
-    quasis: [],
-  }
-  expect(getJsxAttributeValue(attributeValue)).toBe('')
-
-  // TODO: Add more complex test
-})
+// test('handles TemplateLiteral', () => {
+//   //
+// })
 
 test('handles ObjectExpression', () => {
-  // const attributeValue: ObjectExpression = {
-  //   type: 'ObjectExpression',
-  //   properties: [{ type: 'ObjectProperty', key: 'key', value: 'value' }],
-  // }
-  // expect(getJsxAttributeValue(attributeValue)).toBe(true)
-  // TODO: Add more complex test
+  const attributeValue: ObjectExpression = {
+    type: 'ObjectExpression',
+    properties: [
+      {
+        type: 'ObjectProperty',
+        key: { type: 'StringLiteral', value: 'key' },
+        value: { type: 'StringLiteral', value: 'value' },
+        computed: null,
+        shorthand: null,
+      },
+      {
+        type: 'ObjectProperty',
+        key: { type: 'StringLiteral', value: 'key2' },
+        value: { type: 'NumericLiteral', value: 2 },
+        computed: null,
+        shorthand: null,
+      },
+      {
+        type: 'ObjectProperty',
+        key: { type: 'StringLiteral', value: undefined },
+        value: { type: 'NumericLiteral', value: 2 },
+        computed: null,
+        shorthand: null,
+      },
+    ],
+  }
+  expect(getJsxAttributeValue(attributeValue)).toStrictEqual({
+    key: 'value',
+    key2: 2,
+  })
 })
 
 test('handles Identifier', () => {
@@ -325,11 +343,43 @@ test('handles BinaryExpression', () => {
   }
   expect(getJsxAttributeValue(attributeValue)).toBe(1073741822)
 
-  // TODO: Add more complex test
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '|',
+    left: { type: 'NumericLiteral', value: 12 },
+    right: { type: 'NumericLiteral', value: 25 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(29)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '&',
+    left: { type: 'NumericLiteral', value: 12 },
+    right: { type: 'NumericLiteral', value: 25 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(8)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: '^',
+    left: { type: 'NumericLiteral', value: 12 },
+    right: { type: 'NumericLiteral', value: 25 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(21)
+
+  attributeValue = {
+    type: 'BinaryExpression',
+    operator: 'instanceof',
+    left: { type: 'NumericLiteral', value: 1 },
+    right: { type: 'NumericLiteral', value: 1 },
+  }
+  expect(getJsxAttributeValue(attributeValue)).toBe(
+    'BinaryExpression with "instanceof" is not supported'
+  )
 })
 
 test('handles UnaryExpression', () => {
-  // TODO: Question: Why os BooleanLiteral originally not supported?
+  // TODO: Question: Why was BooleanLiteral originally not supported?
   let attributeValue: UnaryExpression = {
     type: 'UnaryExpression',
     argument: { type: 'BooleanLiteral', value: true },
