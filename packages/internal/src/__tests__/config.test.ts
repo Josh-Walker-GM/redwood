@@ -65,4 +65,10 @@ describe('getConfig', () => {
     delete process.env['API_URL']
     delete process.env['APP_ENV']
   })
+
+  it('throw with bad config path', () => {
+    expect(() => getConfig('blah.blah')).toThrow(
+      `Could not parse "blah.blah": Error: ENOENT: no such file or directory, open 'blah.blah'`
+    )
+  })
 })
