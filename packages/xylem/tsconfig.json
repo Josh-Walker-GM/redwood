@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.compilerOption.json",
+  "compilerOptions": {
+    "isolatedModules": true,
+    "rootDir": "src",
+    "outDir": "dist",
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../framework-tools" }
+  ]
+}
