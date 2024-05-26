@@ -10,6 +10,7 @@ import type { ColumnMetadata, Metadata, ModelMetadata } from '../../metadata'
 import { XylemManager } from '../../model/manager'
 import type {
   MigrationState,
+  PreparedStatementData,
   TBaseSchema,
   TTableBuilderCallback,
 } from '../database'
@@ -222,8 +223,10 @@ class SQLiteDatabase extends Database<ProviderInstance> {
 
   async execute(ambitionEntry: AmbitionEntry) {
     const plan = await this.plan(ambitionEntry)
-    XylemManager.events.emit('execute', plan)
-    return new Promise<any>((resolve, reject) => {
+    if (XylemManager.autoExplain) {
+      await this.explainPlan(plan)
+    }
+    const result = await new Promise<any>((resolve, reject) => {
       this.provider.all(plan.sql.join(' '), plan.values, (err, rows) => {
         if (err) {
           reject(err)
@@ -232,13 +235,19 @@ class SQLiteDatabase extends Database<ProviderInstance> {
         }
       })
     })
+    XylemManager.events.emit('execute', plan, result)
+    return result
   }
 
   async explain(ambitionEntry: AmbitionEntry) {
-    const { sql, values } = await this.plan(ambitionEntry)
-    const query = `EXPLAIN QUERY PLAN ${sql.join(' ')}`
+    const plan = await this.plan(ambitionEntry)
+    return this.explainPlan(plan)
+  }
+
+  async explainPlan(plan: PreparedStatementData) {
+    const query = `EXPLAIN QUERY PLAN ${plan.sql.join(' ')}`
     const explain = await new Promise<string>((resolve, reject) => {
-      this.provider.all(query, values, (err, rows) => {
+      this.provider.all(query, plan.values, (err, rows) => {
         if (err) {
           reject(err)
           return
@@ -246,7 +255,7 @@ class SQLiteDatabase extends Database<ProviderInstance> {
         resolve(rows?.map((r) => JSON.stringify(r)).join('\n'))
       })
     })
-    XylemManager.events.emit('explain', explain)
+    XylemManager.events.emit('explain', plan, explain)
     return explain
   }
 }
