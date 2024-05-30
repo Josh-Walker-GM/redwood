@@ -7,82 +7,104 @@ import {
   AmbitionNodeValue,
 } from '../ambition'
 
-import { XylemManager } from './manager'
-
-interface XylemModelType {
-  PrimaryKey: any
-  Data: Record<string | symbol, any>
+type Constructor = new (...args: any[]) => any
+type XylemModelTypical = Constructor & {
+  tableName?: string
+  primaryKey?: string
 }
 
-type PrimaryKey<T extends XylemModelType> = T['PrimaryKey']
-type Data<T extends XylemModelType> = T['Data']
+type XylemModelBaseTypings = {
+  PrimaryKey: any
+  Column: Record<string, any>
+}
 
-type Constructor<T> = new (...args: any[]) => T
-
-type ModelInstance<T extends XylemModelType> = InstanceType<
-  Constructor<Data<T>>
->
-
-function XylemModel<ModelType extends XylemModelType>() {
-  const Model = class {
-    // @ts-expect-error this will get used in the future
-    #data: Data<ModelType>
-
-    constructor(data: Data<ModelType>) {
-      this.#data = data
+function XylemModelFactory<M extends XylemModelBaseTypings>() {
+  return function <T extends XylemModelTypical>(Base: T) {
+    // TODO(jgmw): We should ensure a specific casing for the table name?
+    const tableName = Base.tableName ?? Base.name
+    if (!tableName) {
+      throw new Error(
+        'Unable to determine table name for model and no tableName static property was provided',
+      )
     }
 
-    static all(): Ambition<ModelType, ModelInstance<ModelType>[]> {
-      const entry = new AmbitionEntryRead(
-        XylemManager.instance.getTableName(this.name),
-      )
-      return new Ambition<ModelType, ModelInstance<ModelType>[]>(entry)
+    const primaryKey = Base.primaryKey ?? 'id'
+    if (!primaryKey) {
+      throw new Error('Cannot provide a falsy value for the primaryKey')
     }
 
-    static find(
-      primaryKey: PrimaryKey<ModelType>,
-    ): Ambition<ModelType, ModelInstance<ModelType> | null>
-    static find(
-      primaryKey: PrimaryKey<ModelType>[],
-    ): Ambition<ModelType, (ModelInstance<ModelType> | null)[]>
+    // It is not possible to have hidden or private properties in an exported
+    // class in TypeScript. Instead, we use a WeakMap to store the hidden data
+    // for each instance of the class.
+    const hiddenDataStore = new WeakMap<object, M['Column']>()
 
-    static find(
-      primaryKey: PrimaryKey<ModelType> | PrimaryKey<ModelType>[],
-    ): Ambition<
-      ModelType,
-      ModelInstance<ModelType> | null | (ModelInstance<ModelType> | null)[]
-    > {
-      const entry = new AmbitionEntryRead(
-        XylemManager.instance.getTableName(this.name),
-      )
-      const primaryKeyColumn = XylemManager.instance.getPrimaryKey(this.name)
-      if (Array.isArray(primaryKey)) {
-        entry.where = new AmbitionLogicalNode(
-          primaryKeyColumn,
-          'IN',
-          primaryKey.map((pk) => new AmbitionNodeValue(pk)),
-        )
-      } else {
-        entry.where = new AmbitionComparisonNode(
-          primaryKeyColumn,
-          AmbitionComparisonOperator.EQUAL,
-          primaryKey,
-        )
+    return class extends Base {
+      private constructor(...data: any[]) {
+        super(data)
+        hiddenDataStore.set(this, {})
       }
 
-      return new Ambition<
-        ModelType,
-        ModelInstance<ModelType> | null | (ModelInstance<ModelType> | null)[]
-      >(entry)
+      static get tableName(): string {
+        return tableName
+      }
+
+      static get primaryKey(): string {
+        return primaryKey
+      }
+
+      static new(data: M['Column']): InstanceType<T> {
+        const target = new this()
+        const proxy = new Proxy<InstanceType<T>>(target, {})
+        for (const [key, value] of Object.entries(data)) {
+          proxy[key] = value
+        }
+        return proxy
+      }
+
+      static all(): Ambition<T, InstanceType<T>[]> {
+        const entry = new AmbitionEntryRead(this.tableName)
+        return new Ambition<T, InstanceType<T>[]>(entry)
+      }
+
+      static find(
+        primaryKey: M['PrimaryKey'],
+      ): Ambition<T, InstanceType<T> | null>
+      static find(
+        primaryKey: M['PrimaryKey'][],
+      ): Ambition<T, (InstanceType<T> | null)[]>
+
+      static find(
+        primaryKey: M['PrimaryKey'] | M['PrimaryKey'][],
+      ): Ambition<T, InstanceType<T> | null | (InstanceType<T> | null)[]> {
+        const entry = new AmbitionEntryRead(this.tableName)
+        if (Array.isArray(primaryKey)) {
+          entry.where = new AmbitionLogicalNode(
+            this.primaryKey,
+            'IN',
+            primaryKey.map((pk) => new AmbitionNodeValue(pk)),
+          )
+        } else {
+          entry.where = new AmbitionComparisonNode(
+            this.primaryKey,
+            AmbitionComparisonOperator.EQUAL,
+            primaryKey,
+          )
+        }
+
+        return new Ambition<
+          T,
+          InstanceType<T> | null | (InstanceType<T> | null)[]
+        >(entry)
+      }
+
+      save(): void {
+        // TODO(jgmw): Implement
+      }
     }
-
-    //
   }
-
-  return Model as Constructor<Data<ModelType>> & typeof Model
 }
 
-export { XylemModel }
+export { XylemModelFactory }
 
 // ---
 

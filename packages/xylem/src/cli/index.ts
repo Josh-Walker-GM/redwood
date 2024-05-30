@@ -172,9 +172,9 @@ async function metadata() {
 
   for (const model of meta.models) {
     const primaryKeyType = model.columns[model.primaryKey].type
-    lines.push(`export interface T${pascalCase(model.name)} {`)
+    lines.push(`export interface ${pascalCase(model.name)}MetaTypes {`)
     lines.push(`  PrimaryKey: ${primaryKeyType}`)
-    lines.push(`  Data: {`)
+    lines.push(`  Column: {`)
     for (const [name, column] of Object.entries(model.columns)) {
       lines.push(`    ${name}: ${column.type}`)
     }

@@ -81,7 +81,7 @@ class SQLiteDatabase extends Database<ProviderInstance> {
             reject(err)
           }
 
-          const state = (rows as { name: string; migrated_at: string }[]).map(
+          const state = (rows as { name: string; migrated_at: string }[])?.map(
             (row) => ({
               name: row.name,
               migratedAt: row.migrated_at ? new Date(row.migrated_at) : null,
@@ -543,8 +543,8 @@ class SQLiteColumnBuilder extends BaseColumnBuilder {
   // ---
 
   primary(): this {
-    // TODO(jgmw): Implement
-    throw new Error('Method not implemented.')
+    this.modifiers.set('primary_key', 'PRIMARY KEY')
+    return this
   }
 
   index(): this {
